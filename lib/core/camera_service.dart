@@ -6,20 +6,24 @@ import 'package:camera/camera.dart';
 class CameraService {
   CameraController? _controller;
   List<CameraDescription>? _cameras;
+  CameraLensDirection _currentDirection = CameraLensDirection.front;
 
   CameraController? get controller => _controller;
   bool get isInitialized => _controller?.value.isInitialized ?? false;
+  CameraLensDirection get currentDirection => _currentDirection;
 
-  /// Initializes the back camera at medium resolution.
-  Future<void> initialize() async {
+  /// Initializes the camera at medium resolution.
+  Future<void> initialize({CameraLensDirection direction = CameraLensDirection.front}) async {
     _cameras = await availableCameras();
     if (_cameras == null || _cameras!.isEmpty) {
       throw Exception('No cameras available on this device.');
     }
 
-    // Prefer the back camera for workout tracking.
+    _currentDirection = direction;
+
+    // Prefer the selected camera for workout tracking.
     final camera = _cameras!.firstWhere(
-      (c) => c.lensDirection == CameraLensDirection.back,
+      (c) => c.lensDirection == _currentDirection,
       orElse: () => _cameras!.first,
     );
 
@@ -60,6 +64,22 @@ class CameraService {
     } catch (_) {
       // Stream may already be stopped.
     }
+  }
+
+  /// Switches the camera to the other direction.
+  Future<void> switchCamera(void Function(CameraImage image) onFrame, {int skipFrames = 2}) async {
+    if (_cameras == null || _cameras!.length < 2) return;
+
+    final newDirection = _currentDirection == CameraLensDirection.back
+        ? CameraLensDirection.front
+        : CameraLensDirection.back;
+
+    await stopImageStream();
+    await _controller?.dispose();
+    _controller = null;
+
+    await initialize(direction: newDirection);
+    await startImageStream(onFrame, skipFrames: skipFrames);
   }
 
   /// Releases all camera resources.

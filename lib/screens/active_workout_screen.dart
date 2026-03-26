@@ -130,6 +130,28 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen>
     if (mounted) context.go('/workout_result');
   }
 
+  Future<void> _switchCamera() async {
+    if (_isInitializing) return;
+    
+    setState(() => _isInitializing = true);
+    
+    try {
+      final cameraService = ref.read(cameraServiceProvider);
+      await cameraService.switchCamera(
+        (image) => _onCameraFrame(image),
+        skipFrames: 2,
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = "Failed to switch camera: $e";
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _isInitializing = false);
+    }
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -193,18 +215,37 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen>
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Close Button
-                          Container(
-                            margin: const EdgeInsets.only(top: 4, left: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.05),
-                              shape: BoxShape.circle,
-                            ),
-                            child: IconButton(
-                              icon: const Icon(LucideIcons.x,
-                                  color: Colors.white, size: 24),
-                              onPressed: () => context.go('/dashboard'),
-                            ),
+                          // Left Side (Close + Switch Camera)
+                          Row(
+                            children: [
+                              // Close Button
+                              Container(
+                                margin: const EdgeInsets.only(top: 4, left: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.05),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: IconButton(
+                                  icon: const Icon(LucideIcons.x,
+                                      color: Colors.white, size: 24),
+                                  onPressed: () => context.go('/dashboard'),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              // Switch Camera Button
+                              Container(
+                                margin: const EdgeInsets.only(top: 4, left: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.05),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: IconButton(
+                                  icon: const Icon(Icons.cameraswitch,
+                                      color: Colors.white, size: 24),
+                                  onPressed: _switchCamera,
+                                ),
+                              ),
+                            ],
                           ),
 
                           // Heart Rate Indicator
