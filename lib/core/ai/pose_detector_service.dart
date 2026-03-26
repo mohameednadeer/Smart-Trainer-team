@@ -1,4 +1,3 @@
-import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:camera/camera.dart';
@@ -47,23 +46,21 @@ class PoseDetectorService {
       return PoseResult.empty();
     }
 
-    // Convert CameraImage (YUV420) to a flat RGB byte list on a background
-    // isolate so the UI thread is never blocked by pixel manipulation.
+    // Convert CameraImage (YUV420) to a flat uint8 RGB byte list
+    // matching what MoveNet Lightning expects.
     final inputBytes = _convertCameraImage(image);
 
     if (inputBytes == null) return PoseResult.empty();
 
-    // Run inference. tflite_flutter's Interpreter is not isolate-safe,
-    // so inference itself runs on the main thread but is very fast for
-    // MoveNet Lightning (~6 ms on a modern phone).
+    // Run inference. 
     final output = _runInference(inputBytes);
 
     return _parseOutput(output);
   }
 
-  /// Converts a YUV420 camera image to a flat Float32 RGB tensor
-  /// of shape [1, 192, 192, 3].
-  static Float32List? _convertCameraImage(CameraImage image) {
+  /// Converts a YUV420 camera image to a flat Uint8 RGB tensor
+  /// of shape [1, 192, 192, 3] as expected by MoveNet Lightning.
+  static Uint8List? _convertCameraImage(CameraImage image) {
     try {
       final int width = image.width;
       final int height = image.height;
@@ -80,7 +77,8 @@ class PoseDetectorService {
       final double scaleX = width / _inputSize;
       final double scaleY = height / _inputSize;
 
-      final input = Float32List(1 * _inputSize * _inputSize * 3);
+      // MoveNet expects uint8 values in [0, 255]
+      final input = Uint8List(1 * _inputSize * _inputSize * 3);
       int index = 0;
 
       for (int y = 0; y < _inputSize; y++) {
@@ -96,17 +94,10 @@ class PoseDetectorService {
           final int uVal = uPlane[uvIndex.clamp(0, uPlane.length - 1)];
           final int vVal = vPlane[uvIndex.clamp(0, vPlane.length - 1)];
 
-          // YUV → RGB conversion
-          int r = (yVal + 1.370705 * (vVal - 128)).round().clamp(0, 255);
-          int g = (yVal - 0.337633 * (uVal - 128) - 0.698001 * (vVal - 128))
-              .round()
-              .clamp(0, 255);
-          int b = (yVal + 1.732446 * (uVal - 128)).round().clamp(0, 255);
-
-          // Normalize to [0.0, 1.0] as expected by MoveNet
-          input[index++] = r / 255.0;
-          input[index++] = g / 255.0;
-          input[index++] = b / 255.0;
+          // YUV → RGB conversion, keep as uint8 [0, 255]
+          input[index++] = (yVal + 1.370705 * (vVal - 128)).round().clamp(0, 255);
+          input[index++] = (yVal - 0.337633 * (uVal - 128) - 0.698001 * (vVal - 128)).round().clamp(0, 255);
+          input[index++] = (yVal + 1.732446 * (uVal - 128)).round().clamp(0, 255);
         }
       }
 
@@ -117,7 +108,7 @@ class PoseDetectorService {
   }
 
   /// Runs TFLite inference and returns raw output tensor.
-  List<List<List<List<double>>>> _runInference(Float32List inputBytes) {
+  List<List<List<List<double>>>> _runInference(Uint8List inputBytes) {
     // MoveNet Lightning output: [1, 1, 17, 3]
     // Each keypoint: [y, x, confidence]
     final output = List.generate(

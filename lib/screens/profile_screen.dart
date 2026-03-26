@@ -3,12 +3,14 @@ import 'package:lucide_icons/lucide_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smart_trainer/theme/app_colors.dart';
 import 'package:smart_trainer/theme/theme_ext.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:smart_trainer/core/providers.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: context.bgColor,
       body: SafeArea(
@@ -19,7 +21,7 @@ class ProfileScreen extends StatelessWidget {
             children: [
               _buildHeader(context),
               const SizedBox(height: 24),
-              _buildUserInfoCard(context),
+              _buildUserInfoCard(context, ref),
               const SizedBox(height: 24),
               _buildStatsRow(context),
               const SizedBox(height: 32),
@@ -72,7 +74,9 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildUserInfoCard(BuildContext context) {
+  Widget _buildUserInfoCard(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(userProvider);
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -105,7 +109,7 @@ class ProfileScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Alex Johnson',
+                  user.name,
                   style: TextStyle(
                     color: context.textColor,
                     fontSize: 20,
@@ -119,7 +123,7 @@ class ProfileScreen extends StatelessWidget {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'alex.johnson@email.com',
+                        user.email,
                         style: TextStyle(color: context.secondaryTextColor, fontSize: 13),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -133,7 +137,7 @@ class ProfileScreen extends StatelessWidget {
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        'Joined January 2026',
+                        'Joined ${user.joinDate}',
                         style: TextStyle(color: context.secondaryTextColor, fontSize: 13),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -143,13 +147,17 @@ class ProfileScreen extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.electricBlue.withOpacity(0.1),
+          InkWell(
+            onTap: () => context.push('/edit-profile'),
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.electricBlue.withOpacity(0.1),
+              ),
+              child: const Icon(LucideIcons.edit2, color: AppColors.electricBlue, size: 20),
             ),
-            child: const Icon(LucideIcons.edit2, color: AppColors.electricBlue, size: 20),
           ),
         ],
       ),

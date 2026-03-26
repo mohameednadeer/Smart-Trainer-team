@@ -7,6 +7,7 @@ import 'package:smart_trainer/screens/profile_screen.dart';
 import 'package:smart_trainer/screens/settings_screen.dart';
 import 'package:smart_trainer/screens/active_workout_screen.dart';
 import 'package:smart_trainer/screens/workout_result_screen.dart';
+import 'package:smart_trainer/screens/edit_profile_screen.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/auth',
@@ -42,6 +43,10 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/settings',
       builder: (context, state) => const SettingsScreen(),
+    ),
+    GoRoute(
+      path: '/edit-profile',
+      builder: (context, state) => const EditProfileScreen(),
     ),
   ],
 );

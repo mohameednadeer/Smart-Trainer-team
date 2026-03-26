@@ -73,3 +73,44 @@ class ThemeModeNotifier extends Notifier<ThemeMode> {
 
 /// Provides the current application theme mode.
 final themeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(ThemeModeNotifier.new);
+
+// ─────────────────── User Profile ───────────────────
+
+class UserProfile {
+  final String name;
+  final String email;
+  final String joinDate;
+
+  const UserProfile({
+    required this.name,
+    required this.email,
+    required this.joinDate,
+  });
+
+  UserProfile copyWith({
+    String? name,
+    String? email,
+    String? joinDate,
+  }) {
+    return UserProfile(
+      name: name ?? this.name,
+      email: email ?? this.email,
+      joinDate: joinDate ?? this.joinDate,
+    );
+  }
+}
+
+class UserProfileNotifier extends Notifier<UserProfile> {
+  @override
+  UserProfile build() => const UserProfile(
+        name: 'Alex Johnson',
+        email: 'alex.johnson@email.com',
+        joinDate: 'January 2026',
+      );
+
+  void updateProfile({String? name, String? email}) {
+    state = state.copyWith(name: name, email: email);
+  }
+}
+
+final userProvider = NotifierProvider<UserProfileNotifier, UserProfile>(UserProfileNotifier.new);
