@@ -14,6 +14,81 @@ class SettingsScreen extends ConsumerStatefulWidget {
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool workoutReminders = true;
+  String _selectedLanguage = 'English';
+
+  static const _languages = [
+    {'label': 'English', 'flag': '🇬🇧'},
+    {'label': 'العربية', 'flag': '🇸🇦'},
+  ];
+
+  void _showLanguagePicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: surfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Select Language',
+                  style: TextStyle(
+                      color: textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20),
+              ..._languages.map((lang) {
+                final isSelected = _selectedLanguage == lang['label'];
+                return InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () {
+                    setState(() => _selectedLanguage = lang['label']!);
+                    Navigator.pop(ctx);
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? AppColors.electricBlue.withOpacity(0.1)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected
+                            ? AppColors.electricBlue
+                            : glassBorderColor,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Text(lang['flag']!, style: const TextStyle(fontSize: 24)),
+                        const SizedBox(width: 16),
+                        Text(lang['label']!,
+                            style: TextStyle(
+                                color: textColor,
+                                fontSize: 16,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal)),
+                        const Spacer(),
+                        if (isSelected)
+                          const Icon(Icons.check_circle,
+                              color: AppColors.electricBlue, size: 22),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   bool get isLight => ref.watch(themeProvider) == ThemeMode.light;
   Color get bgColor => isLight ? const Color(0xFFF5F7FA) : AppColors.background;
@@ -78,24 +153,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   children: [
                     _buildNavigationTile(
                       title: 'Language',
-                      subtitle: 'English',
+                      subtitle: _selectedLanguage,
                       icon: LucideIcons.globe,
                       iconColor: AppColors.electricBlue,
-                      onTap: () {},
+                      onTap: _showLanguagePicker,
                       showBorder: true,
                     ),
                     _buildNavigationTile(
                       title: 'Privacy & Security',
                       icon: LucideIcons.shield,
                       iconColor: AppColors.electricBlue,
-                      onTap: () {},
+                      onTap: () => context.push('/privacy'),
                       showBorder: true,
                     ),
                     _buildNavigationTile(
                       title: 'Help & Support',
                       icon: LucideIcons.helpCircle,
                       iconColor: AppColors.electricBlue,
-                      onTap: () {},
+                      onTap: () => context.push('/help-support'),
                       showBorder: false,
                     ),
                   ],
