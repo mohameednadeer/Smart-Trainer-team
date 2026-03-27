@@ -41,14 +41,14 @@ class PoseDetectorService {
   /// Returns a [PoseResult] containing 17 keypoints with coordinates
   /// normalized to [0.0, 1.0]. The heavy conversion and inference are
   /// executed in a background isolate to keep the UI thread responsive.
-  Future<PoseResult> processFrame(CameraImage image) async {
+  Future<PoseResult> processFrame(CameraImage image, CameraLensDirection lensDirection) async {
     if (!_isInitialized || _interpreter == null) {
       return PoseResult.empty();
     }
 
     // Convert CameraImage (YUV420) to a flat uint8 RGB byte list
     // matching what MoveNet Lightning expects.
-    final inputBytes = _convertCameraImage(image);
+    final inputBytes = _convertCameraImage(image, lensDirection);
 
     if (inputBytes == null) return PoseResult.empty();
 
@@ -61,7 +61,7 @@ class PoseDetectorService {
   /// Converts a YUV420 camera image to a flat Uint8 RGB tensor
   /// of shape [1, 192, 192, 3] as expected by MoveNet Lightning.
   /// Rotates the image 90° clockwise to match Android portrait orientation.
-  static Uint8List? _convertCameraImage(CameraImage image) {
+  static Uint8List? _convertCameraImage(CameraImage image, CameraLensDirection lensDirection) {
     try {
       final int srcWidth = image.width;   // landscape width (e.g. 1280)
       final int srcHeight = image.height; // landscape height (e.g. 720)
@@ -92,10 +92,19 @@ class PoseDetectorService {
           final int rotX = (x * scaleX).toInt().clamp(0, rotWidth - 1);
           final int rotY = (y * scaleY).toInt().clamp(0, rotHeight - 1);
 
-          // Map back to original landscape coordinates (90° clockwise rotation):
-          // rotated(x, y) → original(srcWidth - 1 - rotY, rotX)
-          final int srcX = (srcWidth - 1 - rotY).clamp(0, srcWidth - 1);
-          final int srcY = rotX.clamp(0, srcHeight - 1);
+          final int srcX, srcY;
+
+          if (lensDirection == CameraLensDirection.front) {
+            // Front camera on Android: sensor orientation is usually 270°.
+            // To make it portrait, we rotate 270° clockwise.
+            srcX = rotY.clamp(0, srcWidth - 1);
+            srcY = (srcHeight - 1 - rotX).clamp(0, srcHeight - 1);
+          } else {
+            // Back camera on Android: sensor orientation is usually 90°.
+            // To make it portrait, we rotate 90° clockwise.
+            srcX = (srcWidth - 1 - rotY).clamp(0, srcWidth - 1);
+            srcY = rotX.clamp(0, srcHeight - 1);
+          }
 
           final int yIndex = srcY * yRowStride + srcX;
           final int uvIndex =

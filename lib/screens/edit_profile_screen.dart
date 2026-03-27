@@ -18,6 +18,10 @@ class EditProfileScreen extends ConsumerStatefulWidget {
 class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late TextEditingController _nameController;
   late TextEditingController _emailController;
+  late TextEditingController _ageController;
+  late TextEditingController _weightController;
+  late TextEditingController _heightController;
+  late String _gender;
 
   @override
   void initState() {
@@ -25,12 +29,19 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     final user = ref.read(userProvider);
     _nameController = TextEditingController(text: user.name);
     _emailController = TextEditingController(text: user.email);
+    _ageController = TextEditingController(text: user.age.toString());
+    _weightController = TextEditingController(text: user.weight.toString());
+    _heightController = TextEditingController(text: user.height.toString());
+    _gender = user.gender;
   }
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _ageController.dispose();
+    _weightController.dispose();
+    _heightController.dispose();
     super.dispose();
   }
 
@@ -38,6 +49,10 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     ref.read(userProvider.notifier).updateProfile(
       name: _nameController.text.trim(),
       email: _emailController.text.trim(),
+      age: int.tryParse(_ageController.text.trim()) ?? 25,
+      weight: double.tryParse(_weightController.text.trim()) ?? 70.0,
+      height: double.tryParse(_heightController.text.trim()) ?? 170.0,
+      gender: _gender,
     );
     context.pop();
   }
@@ -107,6 +122,65 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                 hint: 'Enter your email',
                 prefixIcon: LucideIcons.mail,
                 controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  Expanded(
+                    child: CustomTextField(
+                      label: 'AGE',
+                      hint: 'e.g. 26',
+                      prefixIcon: LucideIcons.calendar,
+                      controller: _ageController,
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: CustomTextField(
+                      label: 'WEIGHT (KG)',
+                      hint: 'e.g. 75',
+                      prefixIcon: LucideIcons.activity,
+                      controller: _weightController,
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              CustomTextField(
+                label: 'HEIGHT (CM)',
+                hint: 'e.g. 180',
+                prefixIcon: LucideIcons.arrowUp,
+                controller: _heightController,
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 24),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'GENDER',
+                    style: TextStyle(
+                      color: context.secondaryTextColor,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildGenderOption('male', 'Male', LucideIcons.user),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: _buildGenderOption('female', 'Female', LucideIcons.user),
+                      ),
+                    ],
+                  ),
+                ],
               ),
               const SizedBox(height: 48),
 
@@ -118,6 +192,46 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGenderOption(String value, String label, IconData icon) {
+    final isSelected = _gender == value;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _gender = value;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.electricBlue.withOpacity(0.15) : const Color(0xFF1E1F2A),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected ? AppColors.electricBlue : context.glassBorderColor,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? AppColors.electricBlue : context.secondaryTextColor,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: isSelected ? AppColors.electricBlue : context.textColor,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              ),
+            ),
+          ],
         ),
       ),
     );

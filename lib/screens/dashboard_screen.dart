@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:smart_trainer/core/providers.dart';
 import 'package:smart_trainer/theme/app_colors.dart';
 import 'package:smart_trainer/theme/theme_ext.dart';
+import 'package:smart_trainer/core/ai/models/exercise_feedback.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -75,9 +76,9 @@ class DashboardScreen extends ConsumerWidget {
               const SizedBox(height: 32),
               _buildStartWorkoutButton(context),
               const SizedBox(height: 32),
-              _buildTodaysSummary(context),
+              _buildTodaysSummary(context, ref),
               const SizedBox(height: 32),
-              _buildRecentWorkouts(context),
+              _buildRecentWorkouts(context, ref),
               const SizedBox(height: 24),
             ],
           ),
@@ -155,6 +156,7 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildStatCardsRow(BuildContext context, WidgetRef ref) {
     final steps = ref.watch(stepsProvider);
+    final user = ref.watch(userProvider);
 
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -163,15 +165,15 @@ class DashboardScreen extends ConsumerWidget {
           _buildStatCard(context,
             icon: LucideIcons.heart,
             iconColor: AppColors.biometricRed,
-            value: '72',
+            value: '0',
             label: 'BPM',
           ),
           const SizedBox(width: 12),
           _buildStatCard(context,
             icon: LucideIcons.flame,
             iconColor: Colors.orangeAccent,
-            value: '245',
-            label: 'Calories',
+            value: '${user.dailyCalories}',
+            label: 'Daily Kcal',
           ),
           const SizedBox(width: 12),
           _buildStatCard(context,
@@ -289,7 +291,14 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTodaysSummary(BuildContext context) {
+  Widget _buildTodaysSummary(BuildContext context, WidgetRef ref) {
+    final history = ref.watch(workoutHistoryProvider);
+    final today = DateTime.now();
+    final todaysWorkouts = history.where((s) => s.date.year == today.year && s.date.month == today.month && s.date.day == today.day).toList();
+    
+    final totalMinutes = todaysWorkouts.fold(0, (sum, s) => sum + s.duration.inMinutes);
+    final avgAccuracy = todaysWorkouts.isEmpty ? 0 : (todaysWorkouts.fold(0, (sum, s) => sum + s.accuracy) / todaysWorkouts.length).round();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -337,7 +346,7 @@ class DashboardScreen extends ConsumerWidget {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('0', style: TextStyle(color: context.textColor, fontSize: 24, fontWeight: FontWeight.bold)),
+                          Text('$totalMinutes', style: TextStyle(color: context.textColor, fontSize: 24, fontWeight: FontWeight.bold)),
                           const SizedBox(width: 4),
                           Padding(
                             padding: const EdgeInsets.only(bottom: 4),
@@ -354,7 +363,7 @@ class DashboardScreen extends ConsumerWidget {
                       Text('Accuracy', style: TextStyle(color: context.secondaryTextColor, fontSize: 13)),
                       const SizedBox(height: 4),
                       Text(
-                        '0%',
+                        '$avgAccuracy%',
                         style: TextStyle(
                           color: AppColors.electricBlue,
                           fontSize: 24,
@@ -365,16 +374,18 @@ class DashboardScreen extends ConsumerWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
-              Divider(color: context.glassBorderColor),
-              const SizedBox(height: 16),
-              Text(
-                "No workouts today yet. Let's get started! 🚀",
-                style: TextStyle(
-                  color: context.secondaryTextColor,
-                  fontSize: 14,
+              if (todaysWorkouts.isEmpty) ...[
+                const SizedBox(height: 20),
+                Divider(color: context.glassBorderColor),
+                const SizedBox(height: 16),
+                Text(
+                  "No workouts today yet. Let's get started! 🚀",
+                  style: TextStyle(
+                    color: context.secondaryTextColor,
+                    fontSize: 14,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
@@ -382,7 +393,9 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildRecentWorkouts(BuildContext context) {
+  Widget _buildRecentWorkouts(BuildContext context, WidgetRef ref) {
+    final history = ref.watch(workoutHistoryProvider);
+
     return Column(
       children: [
         Row(
@@ -409,11 +422,27 @@ class DashboardScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 12),
-        _buildWorkoutListItem(context, 'Squats', '2 days ago', '92%', '12 min'),
-        const SizedBox(height: 12),
-        _buildWorkoutListItem(context, 'Push-ups', '3 days ago', '88%', '8 min'),
-        const SizedBox(height: 12),
-        _buildWorkoutListItem(context, 'Lunges', '4 days ago', '95%', '15 min'),
+        if (history.isEmpty)
+          const Text('No recent workouts', style: TextStyle(color: Colors.white70))
+        else
+          ...history.reversed.take(3).map((session) {
+            final title = session.exerciseType == ExerciseType.squat ? 'Squats' : (session.exerciseType == ExerciseType.pushUp ? 'Push-ups' : 'Bicep Curls');
+            final difference = DateTime.now().difference(session.date);
+            String subtitle;
+            if (difference.inDays > 0) {
+              subtitle = '${difference.inDays} days ago';
+            } else if (difference.inHours > 0) {
+              subtitle = '${difference.inHours} hours ago';
+            } else if (difference.inMinutes > 0) {
+              subtitle = '${difference.inMinutes} mins ago';
+            } else {
+              subtitle = 'Just now';
+            }
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: _buildWorkoutListItem(context, title, subtitle, '${session.accuracy}%', '${session.duration.inMinutes} min'),
+            );
+          }),
       ],
     );
   }

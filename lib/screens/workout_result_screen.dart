@@ -5,16 +5,22 @@ import 'package:go_router/go_router.dart';
 import 'package:smart_trainer/core/providers.dart';
 import 'package:smart_trainer/theme/app_colors.dart';
 import 'package:smart_trainer/theme/theme_ext.dart';
+import 'package:smart_trainer/core/ai/models/exercise_feedback.dart';
 
 class WorkoutResultScreen extends ConsumerWidget {
   const WorkoutResultScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final feedback = ref.read(exerciseFeedbackProvider);
+    final feedback = ref.watch(exerciseFeedbackProvider);
+    final history = ref.watch(workoutHistoryProvider);
+    final session = history.isNotEmpty ? history.last : WorkoutSessionStats(exerciseType: ExerciseType.squat, date: DateTime.now());
     final accuracy = feedback.accuracyScore;
-    final repCount = feedback.repCount;
+    final repCount = session.reps;
     final accuracyPct = (accuracy * 100).round();
+
+    final durationStr = '${session.duration.inMinutes}:${(session.duration.inSeconds % 60).toString().padLeft(2, '0')}';
+    final caloriesStr = '${session.calories}';
 
     // Determine label from accuracy
     final String accuracyLabel;
@@ -165,9 +171,9 @@ class WorkoutResultScreen extends ConsumerWidget {
                 crossAxisSpacing: 16,
                 childAspectRatio: 1.15,
                 children: [
-                  _buildStatGridItem(context, LucideIcons.clock, 'Duration', '0:45', 'mins', AppColors.electricBlue),
-                  _buildStatGridItem(context, LucideIcons.heart, 'Avg BPM', '142', 'bpm', AppColors.biometricRed),
-                  _buildStatGridItem(context, LucideIcons.flame, 'Calories', '9', 'kcal', Colors.orangeAccent),
+                  _buildStatGridItem(context, LucideIcons.clock, 'Duration', durationStr, 'mins', AppColors.electricBlue),
+                  _buildStatGridItem(context, LucideIcons.heart, 'Avg BPM', '0', 'bpm', AppColors.biometricRed),
+                  _buildStatGridItem(context, LucideIcons.flame, 'Calories', caloriesStr, 'kcal', Colors.orangeAccent),
                   _buildStatGridItem(context, LucideIcons.target, 'Reps', '$repCount', 'total', AppColors.neonGreen),
                 ],
               ),
@@ -202,7 +208,7 @@ class WorkoutResultScreen extends ConsumerWidget {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () => context.go('/training'),
+                  onPressed: () => context.pop(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.electricBlue,
                     padding: const EdgeInsets.symmetric(vertical: 20),

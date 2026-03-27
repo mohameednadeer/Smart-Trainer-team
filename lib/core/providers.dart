@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pedometer/pedometer.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'ai/exercise_evaluator.dart';
 import 'ai/models/exercise_feedback.dart';
@@ -81,22 +82,54 @@ class UserProfile {
   final String name;
   final String email;
   final String joinDate;
+  final int age;
+  final double weight; // kg
+  final double height; // cm
+  final String gender; // 'male' or 'female'
 
   const UserProfile({
     required this.name,
     required this.email,
     required this.joinDate,
+    required this.age,
+    required this.weight,
+    required this.height,
+    required this.gender,
   });
+
+  /// Calculates Daily Caloric Needs (TDEE) based on the Mifflin-St Jeor equation.
+  /// Assuming a 'Lightly Active' multiplier of 1.375 for standard users of this fitness app.
+  int get dailyCalories {
+    if (weight == 0 || height == 0 || age == 0) return 2000; // placeholder default
+
+    double bmr;
+    if (gender == 'male') {
+      bmr = (10 * weight) + (6.25 * height) - (5 * age) + 5;
+    } else {
+      bmr = (10 * weight) + (6.25 * height) - (5 * age) - 161;
+    }
+
+    final tdee = bmr * 1.375;
+    return tdee.round();
+  }
 
   UserProfile copyWith({
     String? name,
     String? email,
     String? joinDate,
+    int? age,
+    double? weight,
+    double? height,
+    String? gender,
   }) {
     return UserProfile(
       name: name ?? this.name,
       email: email ?? this.email,
       joinDate: joinDate ?? this.joinDate,
+      age: age ?? this.age,
+      weight: weight ?? this.weight,
+      height: height ?? this.height,
+      gender: gender ?? this.gender,
     );
   }
 }
@@ -107,10 +140,28 @@ class UserProfileNotifier extends Notifier<UserProfile> {
         name: 'Alex Johnson',
         email: 'alex.johnson@email.com',
         joinDate: 'January 2026',
+        age: 26,
+        weight: 75.0,
+        height: 180.0,
+        gender: 'male',
       );
 
-  void updateProfile({String? name, String? email}) {
-    state = state.copyWith(name: name, email: email);
+  void updateProfile({
+    String? name,
+    String? email,
+    int? age,
+    double? weight,
+    double? height,
+    String? gender,
+  }) {
+    state = state.copyWith(
+      name: name,
+      email: email,
+      age: age,
+      weight: weight,
+      height: height,
+      gender: gender,
+    );
   }
 }
 
@@ -124,8 +175,17 @@ class StepCounterNotifier extends Notifier<int> {
 
   @override
   int build() {
-    _startListening();
+    _initPedometer();
     return 0;
+  }
+
+  Future<void> _initPedometer() async {
+    final status = await Permission.activityRecognition.request();
+    if (status.isGranted) {
+      _startListening();
+    } else {
+      state = 0;
+    }
   }
 
   void _startListening() {
@@ -152,3 +212,53 @@ class StepCounterNotifier extends Notifier<int> {
 }
 
 final stepsProvider = NotifierProvider<StepCounterNotifier, int>(StepCounterNotifier.new);
+
+// ─────────────────── Workout History ───────────────────
+
+class WorkoutSessionStats {
+  final ExerciseType exerciseType;
+  final Duration duration;
+  final int calories;
+  final int reps;
+  final int accuracy;
+  final DateTime date;
+
+  const WorkoutSessionStats({
+    required this.exerciseType,
+    this.duration = Duration.zero,
+    this.calories = 0,
+    this.reps = 0,
+    this.accuracy = 0,
+    required this.date,
+  });
+}
+
+class WorkoutHistoryNotifier extends Notifier<List<WorkoutSessionStats>> {
+  @override
+  List<WorkoutSessionStats> build() {
+    return [
+      WorkoutSessionStats(
+        exerciseType: ExerciseType.squat,
+        duration: const Duration(minutes: 12),
+        calories: 85,
+        reps: 45,
+        accuracy: 92,
+        date: DateTime.now().subtract(const Duration(days: 2)),
+      ),
+      WorkoutSessionStats(
+        exerciseType: ExerciseType.pushUp,
+        duration: const Duration(minutes: 8),
+        calories: 60,
+        reps: 30,
+        accuracy: 88,
+        date: DateTime.now().subtract(const Duration(days: 3)),
+      ),
+    ];
+  }
+
+  void addSession(WorkoutSessionStats session) {
+    state = [...state, session];
+  }
+}
+
+final workoutHistoryProvider = NotifierProvider<WorkoutHistoryNotifier, List<WorkoutSessionStats>>(WorkoutHistoryNotifier.new);

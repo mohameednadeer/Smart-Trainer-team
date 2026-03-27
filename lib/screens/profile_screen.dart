@@ -23,7 +23,11 @@ class ProfileScreen extends ConsumerWidget {
               const SizedBox(height: 24),
               _buildUserInfoCard(context, ref),
               const SizedBox(height: 24),
-              _buildStatsRow(context),
+              _buildStatsRow(context, ref),
+              const SizedBox(height: 32),
+              _buildSectionTitle(context, LucideIcons.activity, 'Daily Caloric Needs', color: Colors.orangeAccent),
+              const SizedBox(height: 16),
+              _buildCalorieNeedsCard(context, ref),
               const SizedBox(height: 32),
               _buildSectionTitle(context, LucideIcons.bluetooth, 'Connected Devices', color: AppColors.electricBlue),
               const SizedBox(height: 16),
@@ -164,7 +168,58 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatsRow(BuildContext context) {
+  Widget _buildStatCard(BuildContext context, {
+    required IconData icon,
+    required Color iconColor,
+    required String value,
+// ... remaining target chunk until the end
+    required String label,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: context.glassBorderColor),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: iconColor.withOpacity(0.1),
+              border: Border.all(color: iconColor.withOpacity(0.2)),
+            ),
+            child: Icon(icon, color: iconColor, size: 24),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            value,
+            style: TextStyle(
+              color: context.textColor,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: context.secondaryTextColor,
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsRow(BuildContext context, WidgetRef ref) {
+    final history = ref.watch(workoutHistoryProvider);
+    final totalWorkouts = history.length;
+    final avgScore = history.isEmpty ? 0 : history.fold(0, (sum, s) => sum + s.accuracy) ~/ history.length;
+
     return Row(
       children: [
         Expanded(
@@ -172,7 +227,7 @@ class ProfileScreen extends ConsumerWidget {
             context,
             icon: LucideIcons.trendingUp,
             iconColor: AppColors.electricBlue,
-            value: '47',
+            value: '$totalWorkouts',
             label: 'Workouts',
           ),
         ),
@@ -182,7 +237,7 @@ class ProfileScreen extends ConsumerWidget {
             context,
             icon: LucideIcons.award,
             iconColor: AppColors.neonGreen,
-            value: '89%',
+            value: '$avgScore%',
             label: 'Avg Score',
           ),
         ),
@@ -200,44 +255,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatCard(
-    BuildContext context, {
-    required IconData icon,
-    required Color iconColor,
-    required String value,
-    required String label,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      decoration: BoxDecoration(
-        color: context.surfaceColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: context.glassBorderColor),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: iconColor, size: 28),
-          const SizedBox(height: 16),
-          Text(
-            value,
-            style: TextStyle(
-              color: context.textColor,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: context.secondaryTextColor,
-              fontSize: 12,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildSectionTitle(BuildContext context, IconData icon, String title, {required Color color}) {
     return Row(
@@ -436,6 +454,63 @@ class ProfileScreen extends ConsumerWidget {
           Text(
             date,
             style: TextStyle(color: context.secondaryTextColor.withOpacity(0.5), fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalorieNeedsCard(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(userProvider);
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: context.surfaceColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: context.glassBorderColor),
+        gradient: LinearGradient(
+          colors: [
+            Colors.orangeAccent.withOpacity(0.1),
+            Colors.transparent,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.orangeAccent.withOpacity(0.15),
+              border: Border.all(color: Colors.orangeAccent.withOpacity(0.3)),
+            ),
+            child: const Icon(LucideIcons.flame, color: Colors.orangeAccent, size: 28),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${user.dailyCalories} kcal',
+                  style: TextStyle(
+                    color: context.textColor,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Recommended daily intake',
+                  style: TextStyle(
+                    color: context.secondaryTextColor,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:smart_trainer/core/ai/angle_calculator.dart';
 import 'package:smart_trainer/core/ai/models/pose_landmark.dart';
@@ -13,11 +14,13 @@ import 'package:smart_trainer/theme/app_colors.dart';
 class SkeletonPainter extends CustomPainter {
   final PoseResult poseResult;
   final Size imageSize;
+  final CameraLensDirection lensDirection;
   final bool showAngles;
 
   SkeletonPainter({
     required this.poseResult,
     required this.imageSize,
+    required this.lensDirection,
     this.showAngles = true,
   });
 
@@ -61,9 +64,10 @@ class SkeletonPainter extends CustomPainter {
     // Map normalized coords to canvas
     Offset toCanvas(PoseLandmark lm) {
       // MoveNet coordinates are normalized [0, 1].
-      // We mirror X for front-camera selfie view.
+      // We mirror X only for front-camera selfie view.
+      final x = lensDirection == CameraLensDirection.front ? 1.0 - lm.x : lm.x;
       return Offset(
-        (1.0 - lm.x) * size.width,
+        x * size.width,
         lm.y * size.height,
       );
     }

@@ -29,7 +29,7 @@ class _TrainingScreenState extends ConsumerState<TrainingScreen> {
       if (!mounted) return;
 
       if (status.isGranted) {
-        context.go('/active_workout');
+        context.push('/active_workout');
       } else if (status.isPermanentlyDenied) {
         _showPermissionDialog();
       } else {
@@ -174,7 +174,7 @@ class _TrainingScreenState extends ConsumerState<TrainingScreen> {
                                 color: AppColors.biometricRed, size: 18),
                             const SizedBox(width: 8),
                             const Text(
-                              '66 BPM',
+                              '0 BPM',
                               style: TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,

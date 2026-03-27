@@ -92,7 +92,8 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen>
 
     try {
       final poseDetector = ref.read(poseDetectorProvider);
-      final result = await poseDetector.processFrame(image);
+      final cameraService = ref.read(cameraServiceProvider);
+      final result = await poseDetector.processFrame(image, cameraService.currentDirection);
 
       if (mounted) {
         ref.read(poseResultProvider.notifier).state = result;
@@ -131,7 +132,31 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen>
     final cameraService = ref.read(cameraServiceProvider);
     await cameraService.stopImageStream();
 
-    if (mounted) context.go('/workout_result');
+    final duration = _stopwatch.elapsed;
+    final reps = ref.read(exerciseFeedbackProvider).repCount;
+    final user = ref.read(userProvider);
+    final weight = user.weight > 0 ? user.weight : 70.0;
+    
+    final type = ref.read(selectedExerciseProvider);
+    // MET values: Squat=5.0, PushUp=4.0, BicepCurl=3.0 (approximate)
+    final met = type == ExerciseType.squat ? 5.0 : (type == ExerciseType.pushUp ? 4.0 : 3.0);
+    
+    // calories = (duration_hours) * MET * weight_kg
+    final calories = (duration.inSeconds / 3600.0) * met * weight;
+
+    final accuracy = (ref.read(exerciseFeedbackProvider).accuracyScore * 100).round();
+    final newSession = WorkoutSessionStats(
+      exerciseType: type,
+      duration: duration,
+      calories: calories.round(),
+      reps: reps,
+      accuracy: accuracy,
+      date: DateTime.now(),
+    );
+
+    ref.read(workoutHistoryProvider.notifier).addSession(newSession);
+
+    if (mounted) context.pushReplacement('/workout_result');
   }
 
   Future<void> _switchCamera() async {
@@ -182,7 +207,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen>
             _buildErrorState()
           else if (cameraService.controller != null &&
               cameraService.isInitialized)
-            _buildCameraPreview(cameraService.controller!, poseResult),
+            _buildCameraPreview(cameraService.controller!, poseResult, cameraService.currentDirection),
 
           // 2. Background Grid (semi-transparent over camera)
           CustomPaint(
@@ -286,7 +311,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen>
                                     color: AppColors.biometricRed, size: 18),
                                 const SizedBox(width: 8),
                                 const Text(
-                                  '68 BPM',
+                                  '0 BPM',
                                   style: TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
@@ -412,7 +437,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen>
   // ─────────────────── Camera Preview + Skeleton ───────────────────
 
   Widget _buildCameraPreview(
-      CameraController controller, PoseResult poseResult) {
+      CameraController controller, PoseResult poseResult, CameraLensDirection direction) {
     return ClipRect(
       child: OverflowBox(
         alignment: Alignment.center,
@@ -430,6 +455,7 @@ class _ActiveWorkoutScreenState extends ConsumerState<ActiveWorkoutScreen>
                   CustomPaint(
                     painter: SkeletonPainter(
                       poseResult: poseResult,
+                      lensDirection: direction,
                       imageSize: Size(
                         controller.value.previewSize?.height ?? 1,
                         controller.value.previewSize?.width ?? 1,
